@@ -1,0 +1,219 @@
+﻿@page "/select-organization"
+@layout AuthLayout
+
+@inject NavigationManager Nav
+@inject IAuthService AuthService
+@inject ISnackbar Snackbar
+@inject ILocalStorageService Storage
+
+<div class="org-container">
+
+    <!-- LEFT BLUE SECTION -->
+    <div class="left-section">
+
+        <div class="left-header">
+            <h1 class="welcome-title">Welcome to TeamTrack</h1>
+        </div>
+
+        <div class="left-center">
+            <h2 class="big-title">Choose your Organization</h2>
+            <p class="small-text">Select one to continue</p>
+        </div>
+
+        <div class="pattern-overlay"></div>
+    </div>
+
+    <!-- RIGHT PANEL -->
+    <div class="right-section">
+
+        <MudPaper Class="org-card" Elevation="6">
+
+            <MudText Typo="Typo.h5" Class="org-title">
+                Select Organization
+            </MudText>
+
+            @if (_loading)
+            {
+                <div class="d-flex justify-center my-5">
+                    <MudProgressCircular Indeterminate="true" Size="Size.Large" />
+                </div>
+            }
+            else if (_organizations?.Any() == true)
+            {
+                <MudList T="OrganizationDto" Dense="false">
+                    @foreach (var org in _organizations!)
+                    {
+                        <MudListItem Class="org-item"
+                                     OnClick="@(() => SelectOrganizationAsync(org.Id))">
+                            <MudText Typo="Typo.subtitle1">@org.Name</MudText>
+                        </MudListItem>
+                    }
+                </MudList>
+            }
+            else
+            {
+                <MudText Class="text-center text-muted mt-3">
+                    No organizations found.
+                </MudText>
+            }
+
+        </MudPaper>
+
+    </div>
+
+</div>
+
+<style>
+
+    /* MAIN LAYOUT */
+    .org-container {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        height: 100vh;
+        overflow: hidden;
+    }
+
+    /* LEFT PANEL */
+    .left-section {
+        background: #0046FF;
+        position: relative;
+        padding: 2rem;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .welcome-title {
+        color: white;
+        font-size: 2.6rem;
+        font-weight: 700;
+        margin-left: .5rem;
+        font-family: "Segoe UI", sans-serif;
+    }
+
+    .left-center {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.7rem;
+        text-align: center;
+    }
+
+    .big-title {
+        font-size: 2.4rem;
+        color: white;
+        font-weight: 700;
+    }
+
+    .small-text {
+        color: rgba(255,255,255,0.85);
+        font-size: 1rem;
+    }
+
+    .pattern-overlay {
+        position: absolute;
+        inset: 0;
+        background-image: url("images/pattern-waves.svg");
+        background-size: cover;
+        background-position: center;
+        opacity: 0.25;
+        pointer-events: none;
+    }
+
+    /* RIGHT PANEL */
+    .right-section {
+        background: #F5F6FA;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 1rem;
+    }
+
+    .org-card {
+        width: 100%;
+        max-width: 420px;
+        padding: 2rem;
+        border-radius: 18px;
+        background: white;
+    }
+
+    .org-title {
+        font-weight: 600;
+        text-align: center;
+        margin-bottom: 1.5rem;
+    }
+
+    .org-item {
+        padding: 1rem;
+        margin-bottom: .5rem;
+        background: #ffffff;
+        border-radius: 12px;
+        cursor: pointer;
+        transition: 0.25s;
+        border: 2px solid transparent;
+    }
+
+    .org-item:hover {
+        border-color: #0046FF;
+        box-shadow: 0 0 12px rgba(0, 70, 255, 0.3);
+        transform: scale(1.03);
+    }
+
+</style>
+
+@code {
+    private bool _loading = true;
+    private List<OrganizationDto>? _organizations;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var loginResponse = await Storage.GetItemAsync<LoginResponseDto>("loginResponse");
+
+        if (loginResponse == null || loginResponse.Organizations == null)
+        {
+            Snackbar.Add("No organization info found. Please login again.", Severity.Error);
+            Nav.NavigateTo("/login");
+            return;
+        }
+
+        _organizations = loginResponse.Organizations;
+        _loading = false;
+
+        // Single org → auto-select
+        if (_organizations.Count == 1)
+        {
+            await SelectOrganizationAsync(_organizations[0].Id);
+            return;
+        }
+    }
+
+    private async Task SelectOrganizationAsync(Guid orgId)
+    {
+        _loading = true;
+
+        var dto = new SwitchOrganizationDto { OrganizationId = orgId };
+        var response = await AuthService.SwitchOrganizationAsync(dto);
+
+        _loading = false;
+
+        if (!response.Success)
+        {
+            Snackbar.Add(response.Message ?? "Failed to switch organization.", Severity.Error);
+            return;
+        }
+
+        // Store the orgId
+        await Storage.SetItemAsync("organizationId", orgId);
+
+        // Save updated tokens
+        await Storage.SetItemAsync("loginResponse", response.Data);
+
+        Snackbar.Add("Organization selected!", Severity.Success);
+
+        Nav.NavigateTo("/dashboard", true);
+    }
+}

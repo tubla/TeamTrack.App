@@ -1,0 +1,93 @@
+﻿@page "/admin/access-requests"
+@layout ApplicationLayout
+
+@inject IAdminAccessService AdminService
+@inject ISnackbar Snackbar
+
+@using MudBlazor
+
+<MudPaper Class="pa-4">
+
+    <MudText Typo="Typo.h5" Class="fw-bold mb-3">
+        Pending Access Requests
+    </MudText>
+
+    <MudTable Items="_requests" Hover="true">
+
+        <HeaderContent>
+            <MudTh>Email</MudTh>
+            <MudTh>Message</MudTh>
+            <MudTh>Actions</MudTh>
+        </HeaderContent>
+
+        <RowTemplate>
+            <MudTd>@context.Email</MudTd>
+            <MudTd>@context.Message</MudTd>
+            <MudTd>
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Primary"
+                           OnClick="@(() => OpenPanel(context))">
+                    Review
+                </MudButton>
+            </MudTd>
+        </RowTemplate>
+
+    </MudTable>
+
+</MudPaper>
+
+<!-- 🔥 Slide-in Drawer for Review Panel -->
+<MudDrawer Anchor="Anchor.Right"
+           Open="@_panelOpen"
+           Elevation="4"
+           ClipMode="DrawerClipMode.Never"
+           Variant="DrawerVariant.Temporary"
+           Width="430px">
+
+
+    @if (_selected != null)
+    {
+        <ReviewRequestPanel @key="_selected.Id"
+                            Request="_selected"
+                            OnCompleted="OnCompleted" />
+    }
+
+
+</MudDrawer>
+
+
+@code {
+    private bool _panelOpen = false;
+    private List<OrgAccessRequestViewModel> _requests = new();
+    private OrgAccessRequestViewModel? _selected;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _requests = await AdminService.GetPendingRequestsAsync();
+    }
+
+
+    private async Task OpenPanel(OrgAccessRequestViewModel req)
+    {
+        _selected = null;
+        _panelOpen = false;
+        StateHasChanged();
+
+        await Task.Delay(10); // tiny delay to force UI cycle
+
+        _selected = req;
+        _panelOpen = true;
+    }
+
+
+    private async Task OnCompleted()
+    {
+        Snackbar.Add("Request processed successfully!", Severity.Success);
+
+        _panelOpen = false;
+        _selected = null;
+
+        _requests = await AdminService.GetPendingRequestsAsync();
+        StateHasChanged();
+    }
+}

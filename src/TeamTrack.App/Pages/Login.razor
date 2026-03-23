@@ -1,0 +1,286 @@
+﻿@page "/login"
+@layout AuthLayout
+
+@inject NavigationManager Nav
+@inject IAuthService AuthService
+@inject ISnackbar Snackbar
+@inject ILocalStorageService Storage
+
+<div class="login-container">
+
+    <!-- LEFT BLUE SECTION -->
+    <div class="left-section">
+
+        <!-- Top heading -->
+        <div class="left-header">
+            <h1 class="welcome-title">Welcome to TeamTrack</h1>
+        </div>
+
+        <!-- Center block -->
+        <div class="left-center">
+            <h2 class="big-title">Get Started</h2>
+            <p class="small-text">Don’t have an account?</p>
+
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Default"
+                       Class="big-btn"
+                       OnClick="@(() => Nav.NavigateTo("/register"))">
+                CREATE ACCOUNT
+            </MudButton>
+        </div>
+
+        <div class="pattern-overlay"></div>
+    </div>
+
+    <!-- RIGHT LOGIN PANEL -->
+    <div class="right-section">
+
+        <MudPaper Class="login-card" Elevation="6">
+
+            <MudText Typo="Typo.h4" Class="form-title">Login</MudText>
+
+            <MudForm @ref="_form" Valid="@_isValid">
+
+                <MudTextField @bind-Value="_model.Email"
+                              Label="Email"
+                              InputType="InputType.Email"
+                              Required="true"
+                              Class="mb-3" />
+
+                <MudTextField @bind-Value="_model.Password"
+                              Label="Password"
+                              InputType="InputType.Password"
+                              Required="true"
+                              Class="mb-4" />
+
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           FullWidth="true"
+                           Loading="_loading"
+                           Disabled="_loading"
+                           Class="login-submit-btn"
+                           OnClick="LoginAsync">
+                    Login
+                </MudButton>
+
+            </MudForm>
+
+            <MudText Class="small-terms mt-3 text-center">
+                Forgot your password? Contact admin.
+            </MudText>
+
+        </MudPaper>
+
+    </div>
+</div>
+
+<style>
+
+    .login-container {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        height: 100vh;
+        overflow: hidden;
+    }
+
+    /* Left Panel */
+    .left-section {
+        background: #0046FF;
+        position: relative;
+        padding: 2rem;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .welcome-title {
+        color: white;
+        font-size: 2.6rem;
+        font-weight: 700;
+        margin-top: 0.4rem;
+        margin-left: 0.5rem;
+        font-family: "Segoe UI", sans-serif;
+    }
+
+    /* ✅ PERFECT CENTER BLOCK */
+    .left-center {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 0.7rem;
+        width: 100%;
+    }
+
+    .big-title {
+        font-size: 2.4rem;
+        color: white;
+        font-weight: 700;
+    }
+
+    .small-text {
+        color: rgba(255,255,255,0.85);
+        font-size: 0.95rem;
+    }
+
+    /* ✅ OUTLINE GLOW BUTTON */
+    .big-btn {
+        border: 2px solid rgba(255,255,255,0.8) !important;
+        color: white !important;
+        padding: 0.85rem 2.5rem;
+        font-size: 1.1rem;
+        border-radius: 30px;
+        font-weight: 600;
+        background: transparent !important;
+        transition: 0.25s ease;
+    }
+
+        .big-btn:hover {
+            background: transparent !important;
+            box-shadow: 0 0 15px rgba(255,255,255,0.8);
+            border-color: white !important;
+            transform: scale(1.03);
+        }
+
+    .pattern-overlay {
+        position: absolute;
+        inset: 0;
+        background-image: url("images/pattern-waves.svg");
+        background-size: cover;
+        background-position: center;
+        opacity: 0.25;
+        pointer-events: none;
+    }
+
+    /* Right Panel */
+    .right-section {
+        background: #F5F6FA;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 1rem;
+    }
+
+    .login-card {
+        width: 100%;
+        max-width: 420px;
+        padding: 2.5rem;
+        border-radius: 18px;
+        background: white;
+    }
+
+    .form-title {
+        font-weight: 700;
+        margin-bottom: 1.5rem;
+        text-align: center;
+    }
+
+    .login-submit-btn {
+        padding: 0.75rem 0;
+        font-weight: 600;
+        border-radius: 10px;
+    }
+
+    .small-terms {
+        font-size: 0.85rem;
+        color: #777;
+    }
+
+</style>
+
+@code {
+    private MudForm? _form;
+    private bool _isValid;
+    private bool _loading;
+    private LoginDto _model = new();
+
+
+    private async Task LoginAsync()
+    {
+        await _form!.Validate();
+
+        if (!_form.IsValid)
+            return;
+
+        _loading = true;
+
+        var response = await AuthService.LoginAsync(_model);
+
+        _loading = false;
+
+        if (!response.Success)
+        {
+            var errorMessage =
+                response.Message ??
+                (response.Errors != null && response.Errors.Any() ? response.Errors.First() : null) ??
+                "Login failed. Please try again.";
+
+            Snackbar.Add(errorMessage, Severity.Error);
+            return;
+        }
+
+        var loginResponse = response.Data;
+
+        await Storage.SetItemAsync("loginResponse", loginResponse);
+
+        // 1. Check if user is Admin
+        bool isAdmin = loginResponse != null && (
+            (loginResponse.User?.Roles?.Contains("Admin") ?? false) ||
+            loginResponse.User?.Roles?.Contains("SuperAdmin") == true);
+
+        if (isAdmin)
+        {
+            // Admins ALWAYS go to dashboard (they always have orgs)
+            Nav.NavigateTo("/dashboard", true);
+            return;
+        }
+
+        // 2. Normal User: Check organization count
+
+        // NEW USER → No org → request access page
+        if (loginResponse != null && loginResponse.Organizations is { Count: 0 })
+        {
+            Nav.NavigateTo("/request-org-access");
+            return;
+        }
+
+        // ONE ORG → Auto select
+        if (loginResponse != null && loginResponse.Organizations!.Count == 1)
+        {
+            await AutoSelectSingleOrganization(loginResponse.Organizations[0].Id);
+            return;
+        }
+
+        // MULTIPLE ORGS → Selection page
+        Nav.NavigateTo("/select-organization");
+    }
+
+    private async Task AutoSelectSingleOrganization(Guid orgId)
+    {
+        var dto = new SwitchOrganizationDto { OrganizationId = orgId };
+
+        var switchResponse = await AuthService.SwitchOrganizationAsync(dto);
+
+        if (!switchResponse.Success)
+        {
+            Snackbar.Add("Organization selection failed!", Severity.Error);
+            Nav.NavigateTo("/login");
+            return;
+        }
+
+        // Save updated creds
+        await Storage.SetItemAsync("loginResponse", switchResponse.Data);
+
+        // Save selected orgId separately for convenience
+        await Storage.SetItemAsync("organizationId", orgId);
+
+        // Navigate to dashboard
+        Nav.NavigateTo("/dashboard", true);
+    }
+
+
+}

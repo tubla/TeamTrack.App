@@ -1,0 +1,200 @@
+﻿@inherits LayoutComponentBase
+@inject NavigationManager Nav
+@inject ILocalStorageService Storage
+
+<div class="app-layout">
+
+    <!-- LEFT SIDEBAR -->
+    <aside class="sidebar">
+
+        <!-- Product / Logo -->
+        <div class="brand">
+            <span class="brand-title">TeamTrack</span>
+        </div>
+
+        <!-- Profile Section -->
+        <div class="profile-section">
+            <MudAvatar Size="Size.Large" Class="profile-avatar" />
+            <div class="profile-info">
+                <div class="profile-name">@_userName</div>
+                <div class="profile-email">@_userEmail</div>
+            </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Main Menu -->
+        <nav class="menu">
+
+            <MudNavLink Href="/dashboard" Match="NavLinkMatch.All"
+                        Class="menu-item" ActiveClass="menu-item-active">
+                Dashboard
+            </MudNavLink>
+
+            <MudNavLink Href="/projects" Class="menu-item" ActiveClass="menu-item-active">
+                Projects
+            </MudNavLink>
+
+            <MudNavLink Href="/tasks" Class="menu-item" ActiveClass="menu-item-active">
+                Tasks
+            </MudNavLink>
+
+            <MudNavLink Href="/profile" Class="menu-item" ActiveClass="menu-item-active">
+                Profile
+            </MudNavLink>
+
+            <!-- Admin menu -->
+            @if (_isAdmin)
+            {
+                <div class="menu-section-label">Admin</div>
+
+                <MudNavLink Href="/admin/access-requests"
+                            Class="menu-item" ActiveClass="menu-item-active">
+                    Access Requests
+                </MudNavLink>
+
+                <MudNavLink Href="/admin/roles"
+                            Class="menu-item" ActiveClass="menu-item-active">
+                    Roles & Permissions
+                </MudNavLink>
+
+                <MudNavLink Href="/admin/organizations"
+                            Class="menu-item" ActiveClass="menu-item-active">
+                    Organizations
+                </MudNavLink>
+            }
+
+            <MudNavLink Href="/logout" Class="menu-item menu-logout">
+                Logout
+            </MudNavLink>
+
+        </nav>
+
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+        @Body
+    </main>
+
+</div>
+
+
+<style>
+
+    /* LAYOUT GRID */
+    .app-layout {
+        display: grid;
+        grid-template-columns: 260px 1fr;
+        height: 100vh;
+    }
+
+    /* SIDEBAR */
+    .sidebar {
+        background: white;
+        border-right: 1px solid #e8e8e8;
+        padding: 1.2rem;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .brand {
+        margin-bottom: 1.2rem;
+    }
+
+    .brand-title {
+        font-size: 1.4rem;
+        font-weight: 700;
+        color: #6A00FF;
+    }
+
+    .profile-section {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+        padding: .6rem 0;
+    }
+
+    .profile-avatar {
+        background: #6A00FF;
+    }
+
+    .profile-info {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .profile-name {
+        font-size: 1rem;
+        font-weight: 600;
+    }
+
+    .profile-email {
+        font-size: 0.85rem;
+        opacity: .7;
+    }
+
+    .divider {
+        width: 100%;
+        height: 1px;
+        background: #e5e5e5;
+        margin: 1rem 0;
+    }
+
+    .menu-section-label {
+        padding: .5rem 0 .2rem .5rem;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        opacity: .6;
+    }
+
+    /* MENU ITEMS */
+    .menu-item {
+        display: block;
+        padding: .75rem 1rem;
+        border-radius: 12px;
+        margin-bottom: .4rem;
+        font-weight: 500;
+        color: #333 !important;
+        transition: 0.2s ease;
+    }
+
+        .menu-item:hover {
+            background: #f2f2ff;
+        }
+
+    .menu-item-active {
+        background: #6A00FF !important;
+        color: white !important;
+    }
+
+    .menu-logout {
+        margin-top: auto;
+        color: #b30000 !important;
+    }
+
+    /* MAIN CONTENT */
+    .main-content {
+        background: #F7F8FA;
+        padding: 2rem;
+        overflow-y: auto;
+    }
+
+</style>
+
+@code {
+    private string? _userName;
+    private string? _userEmail;
+    private bool _isAdmin;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var login = await Storage.GetItemAsync<LoginResponseDto>("loginResponse");
+
+        _userName = login?.User?.FirstName + " " + login?.User?.LastName;
+        _userEmail = login?.User?.Email;
+
+        _isAdmin = login?.User?.Roles?.Contains("Admin") == true
+                || login?.User?.Roles?.Contains("SuperAdmin") == true;
+    }
+}

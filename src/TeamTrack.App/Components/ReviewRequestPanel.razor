@@ -1,0 +1,171 @@
+﻿@inject IOrganizationService OrgService
+@inject IRoleService RoleService
+@inject IAdminAccessService AdminService
+@inject ISnackbar Snackbar
+
+
+<div class="review-panel">
+
+    <div class="review-header">
+        <MudText Typo="Typo.h5" Class="header-title">Review Access Request</MudText>
+        <MudText Typo="Typo.caption" Class="header-subtitle">
+            Approve organization access and assign a role
+        </MudText>
+    </div>
+
+    <div class="review-body">
+
+        <div class="info-block">
+            <MudText><b>Email:</b> @Request.Email</MudText>
+            <MudText><b>Message:</b> @(string.IsNullOrWhiteSpace(Request.Message) ? "—" : Request.Message)</MudText>
+        </div>
+
+        <MudDivider Class="my-3" />
+
+        <MudText Typo="Typo.subtitle1" Class="section-title">
+            Select organizations & assign roles
+        </MudText>
+
+        <div class="org-list">
+
+            <!-- Debug (you can remove this now) -->
+            @* <div style="background:#e8f5e9; padding:8px; margin-bottom:12px; border-radius:6px; font-size:0.9rem;">
+                Selected: @_adminOrgs.Count(o => o.IsSelected) | CanApprove: @CanApprove
+            </div> *@
+
+            @for (int i = 0; i < _adminOrgs.Count; i++)
+            {
+                var org = _adminOrgs[i];
+
+                <div class="org-row" @key="org.Id" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px;">
+
+                    <!-- Switch row -->
+                    <MudSwitch T="bool"
+                               Value="@org.IsSelected"
+                               ValueChanged="@(v => OnOrgSelectedChanged(org, v))"
+                               Color="Color.Primary"
+                               Label="@org.Name" />
+
+                    <!-- Role select appears BELOW the switch (clean, no overflow) -->
+                    @if (org.IsSelected)
+                    {
+                        <div style="margin-left: 32px;">
+                            <!-- indent to align under the label -->
+                            <MudSelect T="Guid"
+                                       Value="@org.RoleId"
+                                       ValueChanged="@(r => OnRoleChanged(org, r))"
+                                       Label="Role"
+                                       Dense="true"
+                                       FullWidth="true"
+                                       Variant="Variant.Outlined"
+                                       Style="max-width: 100%;">
+
+                                <MudSelectItem T="Guid" Value="@Guid.Empty">— Select a role —</MudSelectItem>
+
+                                @foreach (var role in _roles)
+                                {
+                                    <MudSelectItem T="Guid" Value="@role.Id">@role.Name</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </div>
+                    }
+
+                </div>
+            }
+        </div>
+
+    <div class="review-footer">
+
+        <MudButton Variant="Variant.Outlined"
+                   Color="Color.Error"
+                   OnClick="Reject"
+                   Class="mr-2">
+            Reject
+        </MudButton>
+
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   Disabled="@(!CanApprove)"
+                   OnClick="Approve">
+            Approve
+        </MudButton>
+    </div>
+
+</div>
+
+</div>
+
+
+@code {
+    [Parameter] public OrgAccessRequestViewModel Request { get; set; } = default!;
+    [Parameter] public EventCallback OnCompleted { get; set; }
+
+    private bool CanApprove => _adminOrgs.Any(o => o.IsSelected && o.RoleId != Guid.Empty);
+
+    private List<AdminOwnedOrgVM> _adminOrgs = new();
+    private List<RoleVM> _roles = new();
+    private bool _dataLoaded = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAdminDataAsync();
+    }
+
+    protected override Task OnParametersSetAsync()
+    {
+        return Task.CompletedTask;   // ← do nothing here (prevents reset)
+    }
+
+    private async Task LoadAdminDataAsync()
+    {
+        if (_dataLoaded) return;
+
+        var orgs = await OrgService.GetOwnedOrganizationsAsync();
+        _adminOrgs = orgs.Select(o => new AdminOwnedOrgVM
+        {
+            Id = o.Id,
+            Name = o.Name,
+            IsSelected = false,
+            RoleId = Guid.Empty
+        }).ToList();
+
+        _roles = await RoleService.GetRolesAsync();
+        _dataLoaded = true;
+    }
+
+    private async Task OnOrgSelectedChanged(AdminOwnedOrgVM org, bool value)
+    {
+        org.IsSelected = value;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void OnRoleChanged(AdminOwnedOrgVM org, Guid newRoleId)
+    {
+        org.RoleId = newRoleId;
+        StateHasChanged();
+    }
+
+    private async Task Approve()
+    {
+        var dto = new ApproveOrgAccessRequestDto
+        {
+            RequestId = Request.Id,
+            Assignments = _adminOrgs
+                .Where(o => o.IsSelected && o.RoleId != Guid.Empty)
+                .Select(o => new OrgAssignmentDto
+                {
+                    OrganizationId = o.Id,
+                    RoleId = o.RoleId
+                }).ToList()
+        };
+
+        await AdminService.ApproveRequestAsync(dto);
+        await OnCompleted.InvokeAsync();
+    }
+
+    private async Task Reject()
+    {
+        await AdminService.RejectRequestAsync(Request.Id);
+        await OnCompleted.InvokeAsync();
+    }
+}

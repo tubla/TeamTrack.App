@@ -1,0 +1,75 @@
+﻿.review-panel {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 0;
+    background: #fafafa;
+}
+
+/* Header */
+.review-header {
+    padding: 20px 24px;
+    background: linear-gradient(135deg, #4a6cf7 0%, #6b4cf7 100%);
+    color: white;
+    /*border-bottom-left-radius: 12px;*/
+    /*border-bottom-right-radius: 12px;*/
+}
+
+.header-title {
+    font-weight: 600;
+}
+
+.header-subtitle {
+    opacity: 0.9;
+}
+
+/* Body */
+.review-body {
+    padding: 24px;
+    flex: 1;
+    overflow-y: auto;
+}
+
+.info-block {
+    background: white;
+    padding: 16px;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+}
+
+.section-title {
+    margin-top: 20px;
+    margin-bottom: 8px;
+}
+
+/* Organization rows */
+.org-list {
+    max-width: 100%;
+    overflow: hidden;
+}
+
+.org-row {
+    padding: 8px 12px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    background: #fafafa;
+}
+
+.org-name {
+    flex: 1;
+    margin-left: 12px;
+    font-weight: 500;
+}
+
+.role-select {
+    width: 140px;
+}
+
+/* Footer */
+.review-footer {
+    padding: 16px 24px;
+    background: #fff;
+    border-top: 1px solid #e6e6e6;
+    display: flex;
+    justify-content: flex-end;
+}

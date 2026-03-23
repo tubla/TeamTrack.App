@@ -1,0 +1,10 @@
+﻿@page "/"
+@inject NavigationManager Nav
+
+@code {
+    protected override void OnInitialized()
+    {
+        // Redirect root (/) to /register
+        Nav.NavigateTo("/register", true);
+    }
+}

@@ -1,0 +1,223 @@
+﻿@page "/request-org-access"
+@layout AuthLayout
+
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+@inject ILocalStorageService Storage
+@inject IAuthService AuthService
+
+<div class="req-container">
+
+    <!-- LEFT BLUE PANEL -->
+    <div class="left-section">
+
+        <div class="left-header">
+            <h1 class="welcome-title">Welcome to TeamTrack</h1>
+        </div>
+
+        <div class="left-center">
+            <h2 class="big-title">Request Organization Access</h2>
+            <p class="small-text">
+                You are not part of any organization yet.
+            </p>
+            <p class="small-text">
+                Send a request and an admin will add you.
+            </p>
+        </div>
+
+        <div class="pattern-overlay"></div>
+    </div>
+
+    <!-- RIGHT FORM PANEL -->
+    <div class="right-section">
+
+        <MudPaper Class="req-card" Elevation="6">
+
+            <MudText Typo="Typo.h5" Class="form-title">
+                Request Access
+            </MudText>
+
+            <MudForm @ref="_form" Valid="@_isValid">
+
+                <MudTextField @bind-Value="_email"
+                              Label="Your Email"
+                              Disabled="true"
+                              FullWidth="true"
+                              Class="mb-3" />
+
+                <MudTextField @bind-Value="_message"
+                              Label="Message (optional)"
+                              FullWidth="true"
+                              Lines="4"
+                              TextArea="true"
+                              Class="mb-4" />
+
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           FullWidth="true"
+                           Disabled="_loading"
+                           Loading="_loading"
+                           OnClick="RequestAccessAsync"
+                           Class="req-btn">
+                    Send Request
+                </MudButton>
+
+            </MudForm>
+
+            <MudText Class="info-text mt-3 text-center">
+                After approval, you will be notified via email.
+            </MudText>
+
+        </MudPaper>
+
+    </div>
+
+</div>
+
+<style>
+
+    .req-container {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        height: 100vh;
+        overflow: hidden;
+    }
+
+    /* LEFT PANEL */
+    .left-section {
+        background: #0046FF;
+        position: relative;
+        padding: 2rem;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .welcome-title {
+        color: white;
+        font-size: 2.6rem;
+        font-weight: 700;
+        margin-left: .5rem;
+        font-family: "Segoe UI", sans-serif;
+    }
+
+    .left-center {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 0.5rem;
+    }
+
+    .big-title {
+        font-size: 2.3rem;
+        font-weight: 700;
+        color: white;
+    }
+
+    .small-text {
+        color: rgba(255,255,255,0.85);
+        font-size: 0.95rem;
+    }
+
+    .pattern-overlay {
+        position: absolute;
+        inset: 0;
+        background-image: url("images/pattern-waves.svg");
+        background-size: cover;
+        background-position: center;
+        opacity: 0.25;
+        pointer-events: none;
+    }
+
+    /* RIGHT PANEL */
+    .right-section {
+        background: #F5F6FA;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 1rem;
+    }
+
+    .req-card {
+        width: 100%;
+        max-width: 420px;
+        padding: 2.5rem;
+        border-radius: 18px;
+        background: white;
+    }
+
+    .form-title {
+        font-weight: 700;
+        text-align: center;
+        margin-bottom: 1.5rem;
+    }
+
+    .req-btn {
+        padding: 0.75rem 0;
+        font-weight: 600;
+        border-radius: 10px;
+    }
+
+    .info-text {
+        font-size: 0.85rem;
+        color: #666;
+    }
+
+</style>
+
+@code {
+    private MudForm? _form;
+    private bool _isValid;
+    private bool _loading;
+
+    private string? _email;
+    private string? _message;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var loginResponse = await Storage.GetItemAsync<LoginResponseDto>("loginResponse");
+
+        if (loginResponse == null)
+        {
+            Nav.NavigateTo("/login");
+            return;
+        }
+
+        _email = loginResponse.User?.Email;
+    }
+
+    private async Task RequestAccessAsync()
+    {
+        await _form!.ValidateAsync();
+
+        if (!_form.IsValid)
+            return;
+
+        _loading = true;
+
+
+        var dto = new OrgAccessRequestDto
+        {
+            Email = _email!,
+            Message = _message
+        };
+
+        var result = await AuthService.RequestOrgAccessAsync(dto);
+
+        _loading = false;
+
+        if (result.Success)
+        {
+            Snackbar.Add("Your access request has been submitted.", Severity.Success);
+        }
+        else
+        {
+            Snackbar.Add(result.Message ?? "Failed to submit request.", Severity.Error);
+        }
+    }
+}
