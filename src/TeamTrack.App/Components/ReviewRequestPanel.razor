@@ -2,7 +2,7 @@
 @inject IRoleService RoleService
 @inject IAdminAccessService AdminService
 @inject ISnackbar Snackbar
-
+@inject IDialogService DialogService
 
 <div class="review-panel">
 
@@ -165,7 +165,34 @@
 
     private async Task Reject()
     {
-        await AdminService.RejectRequestAsync(Request.Id);
-        await OnCompleted.InvokeAsync();
+        var parameters = new DialogParameters
+    {
+        { nameof(ConfirmDialog.Title),   "Reject Access Request" },
+        { nameof(ConfirmDialog.Message), $"Are you sure you want to reject the request from <b>{Request.Email}</b>?\n\nThis cannot be undone." }
+    };
+
+        var options = new DialogOptions
+        {
+            CloseButton = true,
+            CloseOnEscapeKey = true,
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true,
+            Position = DialogPosition.Center,
+            NoHeader = false,           // ensure header is visible
+            BackdropClick = true        // allow backdrop click to cancel (test if this helps)
+        };
+
+        var dialogRef = await DialogService.ShowAsync<ConfirmDialog>("Confirm Rejection", parameters, options);
+
+        var result = await dialogRef.Result;
+
+        Console.WriteLine($"Dialog result: Canceled = {result!.Canceled}");  // ← add this for debug
+
+        if (!result.Canceled)
+        {
+            await AdminService.RejectRequestAsync(Request.Id);
+            await OnCompleted.InvokeAsync();
+            Snackbar.Add("Access request rejected.", Severity.Success);
+        }
     }
 }
