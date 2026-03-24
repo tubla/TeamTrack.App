@@ -1,0 +1,214 @@
+﻿@page "/projects"
+@using MudBlazor
+@layout ApplicationLayout
+@inject IProjectService ProjectService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject NavigationManager Nav
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-6">
+
+    <!-- Header -->
+    <div class="d-flex justify-space-between align-center mb-6">
+        <MudText Typo="Typo.h4" Class="font-weight-bold">Projects</MudText>
+
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Add"
+                   OnClick="OpenCreateProjectDialog">
+            New Project
+        </MudButton>
+    </div>
+
+    <!-- Search -->
+    <MudTextField Value="_searchString" 
+                  T="string"
+                  ValueChanged="EventCallback.Factory.Create<string>(this, OnSearchChanged)"
+                  Placeholder="Search projects..."
+                  Adornment="Adornment.Start"
+                  AdornmentIcon="@Icons.Material.Filled.Search"
+                  Immediate="true"
+                  DebounceInterval="300"
+                  Class="mb-6" />
+
+    <!-- Table -->
+    <MudTable T="ProjectDto"
+              @ref="_table"
+              ServerData="@( (state, cancellationToken) => LoadServerData(state, cancellationToken) )"
+              Hover="true"
+              Dense="true"
+              FixedHeader="true"
+              Loading="_isLoading">
+
+        <HeaderContent>
+            <MudTh>Name</MudTh>
+            <MudTh>Description</MudTh>
+            <MudTh>Tasks</MudTh>
+            <MudTh>Created</MudTh>
+            <MudTh>Actions</MudTh>
+        </HeaderContent>
+
+        <RowTemplate Context="context">
+            <MudTd DataLabel="Name" Style="cursor:pointer;"
+                   @onclick='() => OpenProjectDetail(context.Id)'>
+                <strong>@context.Name</strong>
+            </MudTd>
+
+            <MudTd DataLabel="Description">
+                @(string.IsNullOrWhiteSpace(context.Description)
+                                ? "-"
+                                : (context.Description.Length > 80
+                                ? context.Description.Substring(0, 77) + "..."
+                                : context.Description))
+            </MudTd>
+
+            <MudTd DataLabel="Tasks">
+                <MudChip T="string" Color="Color.Success">
+                    @context.CompletedTasks / @context.TotalTasks
+                </MudChip>
+            </MudTd>
+
+            <MudTd DataLabel="Created">
+                @context.CreatedAt.ToString("dd MMM yyyy")
+            </MudTd>
+
+            <MudTd DataLabel="Actions">
+                <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                               Color="Color.Primary"
+                               Size="Size.Small"
+                               OnClick="() => OpenEditProjectDialog(context)" />
+
+                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                               Color="Color.Error"
+                               Size="Size.Small"
+                               OnClick="() => DeleteProject(context)" />
+            </MudTd>
+        </RowTemplate>
+
+        <PagerContent>
+            <MudTablePager PageSizeOptions="new int[] { 5, 10, 20, 50 }"
+                           InfoFormat="Showing {first_item} to {last_item} of {total_items}" />
+        </PagerContent>
+
+    </MudTable>
+
+    @if (!_isLoading && !_hasData)
+    {
+        <MudText Align="Align.Center" Color="Color.Secondary" Class="py-12">
+            No projects found. Create your first project!
+        </MudText>
+    }
+    ```
+
+</MudContainer>
+
+@code {
+    private string _searchString = string.Empty;
+    private bool _isLoading = false;
+    private bool _hasData = true;
+
+// ==================== TABLE SERVER DATA ====================
+    private async Task<TableData<ProjectDto>> LoadServerData(TableState state, CancellationToken cancellationToken)
+    {
+        _isLoading = true;
+
+        var response = await ProjectService.GetProjectsAsync(
+            state.Page + 1,
+            state.PageSize,
+            _searchString
+        );
+
+        var items = response.Data?.Items ?? new List<ProjectDto>();
+        var total = response.Data?.TotalCount ?? 0;
+
+        _hasData = items.Any();
+        _isLoading = false;
+
+        return new TableData<ProjectDto>
+        {
+            Items = items,
+            TotalItems = total
+        };
+    }
+
+    // ==================== SEARCH ====================
+    private async Task OnSearchChanged(string value)
+    {
+        _searchString = value;
+        await ReloadTable();
+    }
+
+    private MudTable<ProjectDto>? _table;
+
+    private async Task ReloadTable()
+    {
+        if (_table != null)
+            await _table.ReloadServerData();
+    }
+
+    // ==================== CREATE ====================
+    private async Task OpenCreateProjectDialog()
+    {
+        var parameters = new DialogParameters
+    {
+        { nameof(CreateProjectDialog.OnCreate),
+          EventCallback.Factory.Create<CreateProjectDto>(this, OnProjectCreated) }
+    };
+
+        var dialog = await DialogService.ShowAsync<CreateProjectDialog>(
+            "Create New Project", parameters);
+
+        var result = await dialog.Result;
+
+        if (result != null && !result.Canceled)
+            await ReloadTable();
+    }
+
+    private async Task OnProjectCreated(CreateProjectDto dto)
+    {
+        var result = await ProjectService.CreateProjectAsync(dto);
+
+        if (result.Success)
+        {
+            Snackbar.Add("Project created successfully!", Severity.Success);
+            await ReloadTable();
+        }
+        else
+        {
+            Snackbar.Add(result.Message ?? "Failed to create project", Severity.Error);
+        }
+    }
+
+    // ==================== NAVIGATION ====================
+    private void OpenProjectDetail(Guid projectId)
+    {
+        Nav.NavigateTo($"/projects/{projectId}");
+    }
+
+    // ==================== EDIT ====================
+    private async Task OpenEditProjectDialog(ProjectDto project)
+    {
+        Snackbar.Add("Edit project feature coming soon...", Severity.Info);
+    }
+
+    // ==================== DELETE ====================
+    private async Task DeleteProject(ProjectDto project)
+    {
+        bool? confirmed = await DialogService.ShowMessageBoxAsync(
+            "Delete Project",
+            $"Are you sure you want to delete **{project.Name}**? This cannot be undone.",
+            yesText: "Delete",
+            cancelText: "Cancel");
+
+        if (confirmed == true)
+        {
+            var result = await ProjectService.DeleteProjectAsync(project.Id);
+
+            if (result.Success)
+            {
+                Snackbar.Add("Project deleted successfully", Severity.Success);
+                await ReloadTable();
+            }
+        }
+    }
+}

@@ -1,0 +1,12 @@
+﻿<MudPaper Elevation="1" Class="pa-4 text-center rounded-lg hover-elevated"
+          Style="cursor: pointer; transition: all 0.2s;"
+          @onclick="OnClick">
+    <MudIcon Icon="@Icon" Size="Size.Large" Color="Color.Primary" />
+    <MudText Typo="Typo.subtitle1" Class="mt-3">@Title</MudText>
+</MudPaper>
+
+@code {
+    [Parameter] public string Icon { get; set; } = default!;
+    [Parameter] public string Title { get; set; } = default!;
+    [Parameter] public EventCallback OnClick { get; set; }
+}

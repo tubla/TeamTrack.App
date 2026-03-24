@@ -1,0 +1,66 @@
+﻿@using TeamTrack.App.Models.Project
+@using MudBlazor
+
+<MudDialog>
+    <TitleContent>
+        Create Project
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="_form" Model="@_model" @onValidSubmit="Submit">
+            <MudTextField T="string"
+                          Label="Project Name"
+                          @bind-Value="_model.Name"
+                          Required="true"
+                          RequiredError="Project name is required"
+                          Immediate="true"
+                          Class="mb-4" />
+
+            <MudTextField T="string"
+                          Label="Description (optional)"
+                          @bind-Value="_model.Description"
+                          Lines="4"
+                          TextArea="true"
+                          Class="mb-4" />
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Color="Color.Default">Cancel</MudButton>
+        <MudButton OnClick="Submit" 
+                   Variant="Variant.Filled" 
+                   Color="Color.Primary"
+                   Disabled="_loading">
+            @(_loading ? "Creating..." : "Create Project")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] 
+    public IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private MudForm? _form;
+    private CreateProjectDto _model = new();
+    private bool _loading = false;
+
+    private async Task Submit()
+    {
+        if (_form is null || !_form.IsValid) return;
+
+        _loading = true;
+
+        // We will inject IProjectService from parent when opening dialog
+        // For now, we'll raise an event so parent can handle creation
+        await OnCreate.InvokeAsync(_model);
+
+        _loading = false;
+        MudDialog.Close(DialogResult.Ok(true));
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    [Parameter] 
+    public EventCallback<CreateProjectDto> OnCreate { get; set; }
+}

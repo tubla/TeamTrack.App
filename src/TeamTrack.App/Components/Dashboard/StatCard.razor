@@ -1,0 +1,24 @@
+﻿<MudPaper Elevation="2" Class="pa-5 rounded-lg d-flex flex-column" Style="height: 140px;">
+    <div class="d-flex align-center mb-2">
+        <MudIcon Icon="@Icon" Color="@Color" Size="Size.Large" />
+        <MudText Typo="Typo.subtitle2" Class="ml-3">@Title</MudText>
+    </div>
+
+    <MudText Typo="Typo.h4" Class="font-weight-bold mt-auto">@Value</MudText>
+
+    @if (Trend != 0)
+    {
+        <MudText Typo="Typo.caption"
+                 Color="@(Trend > 0 ? Color.Success : Color.Error)">
+            @(Trend > 0 ? "+" : "")@Trend% this week
+        </MudText>
+    }
+</MudPaper>
+
+@code {
+    [Parameter] public string Icon { get; set; } = default!;
+    [Parameter] public string Title { get; set; } = default!;
+    [Parameter] public int Value { get; set; }
+    [Parameter] public int Trend { get; set; }
+    [Parameter] public Color Color { get; set; } = Color.Primary;
+}

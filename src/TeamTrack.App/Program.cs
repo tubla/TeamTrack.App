@@ -1,13 +1,15 @@
 using Blazored.LocalStorage;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
+using MudBlazor;
 using MudBlazor.Services;
 using TeamTrack.App;
 using TeamTrack.App.Handlers;
-using TeamTrack.App.Handlers.TeamTrack.App.Handlers;
 using TeamTrack.App.Services.Admin;
 using TeamTrack.App.Services.Auth;
+using TeamTrack.App.Services.Dashboard;
 using TeamTrack.App.Services.Organization;
+using TeamTrack.App.Services.Project;
 using TeamTrack.App.Services.Role;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
@@ -41,11 +43,20 @@ builder.Services.AddScoped(sp =>
     return factory.CreateClient("ApiClient");
 });
 
-builder.Services.AddMudServices();
+builder.Services.AddMudServices(config =>
+{
+    config.SnackbarConfiguration.PositionClass = Defaults.Classes.Position.BottomRight;
+    config.SnackbarConfiguration.PreventDuplicates = false;
+    config.SnackbarConfiguration.NewestOnTop = true;
+    config.SnackbarConfiguration.ShowCloseIcon = true;
+    // etc. – keep your existing config
+});
 
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IAdminAccessService, AdminAccessService>();
 builder.Services.AddScoped<IOrganizationService, OrganizationService>();
 builder.Services.AddScoped<IRoleService, RoleService>();
+builder.Services.AddScoped<IDashboardService, DashboardService>();
+builder.Services.AddScoped<IProjectService, ProjectService>();
 
 await builder.Build().RunAsync();
