@@ -45,4 +45,17 @@ public class ProjectService(HttpClient httpClient, ISnackbar snackbar) : IProjec
         var response = await _httpClient.DeleteAsync($"projects/{id}");
         return await response.HandleApiResponse<bool>(_snackbar);
     }
+
+    public async Task<ApiResponse<ProjectDto>> GetProjectAsync(Guid id)
+    {
+        var response = await _httpClient.GetAsync($"projects/{id}");
+        if (response.IsSuccessStatusCode)
+        {
+            var result = await response.Content.ReadFromJsonAsync<ApiResponse<ProjectDto>>();
+            return result ?? new ApiResponse<ProjectDto>();
+        }
+
+        _snackbar.Add("Failed to load project", Severity.Error);
+        return new ApiResponse<ProjectDto>();
+    }
 }

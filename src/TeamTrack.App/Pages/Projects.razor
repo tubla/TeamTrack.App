@@ -1,13 +1,15 @@
 ﻿@page "/projects"
+@inherits BasePageComponent
+
 @using MudBlazor
 @layout ApplicationLayout
+
 @inject IProjectService ProjectService
-@inject ISnackbar Snackbar
 @inject IDialogService DialogService
-@inject NavigationManager Nav
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="mt-6">
 
+    
     <!-- Header -->
     <div class="d-flex justify-space-between align-center mb-6">
         <MudText Typo="Typo.h4" Class="font-weight-bold">Projects</MudText>
@@ -21,8 +23,8 @@
     </div>
 
     <!-- Search -->
-    <MudTextField Value="_searchString" 
-                  T="string"
+    <MudTextField T="string"
+                  Value="_searchString"
                   ValueChanged="EventCallback.Factory.Create<string>(this, OnSearchChanged)"
                   Placeholder="Search projects..."
                   Adornment="Adornment.Start"
@@ -34,11 +36,11 @@
     <!-- Table -->
     <MudTable T="ProjectDto"
               @ref="_table"
-              ServerData="@( (state, cancellationToken) => LoadServerData(state, cancellationToken) )"
+              ServerData="@( (state, token) => LoadServerData(state, token) )"
               Hover="true"
               Dense="true"
               FixedHeader="true"
-              Loading="_isLoading">
+              Loading="_isTableLoading">
 
         <HeaderContent>
             <MudTh>Name</MudTh>
@@ -92,65 +94,76 @@
 
     </MudTable>
 
-    @if (!_isLoading && !_hasData)
+    @if (!_isTableLoading && !_hasData)
     {
         <MudText Align="Align.Center" Color="Color.Secondary" Class="py-12">
             No projects found. Create your first project!
         </MudText>
     }
+    
 
 </MudContainer>
 
 @code {
-    private string _searchString = string.Empty;
-    private bool _isLoading = false;
-    private bool _hasData = true;    
 
-    // ==================== TABLE SERVER DATA ====================
-    private async Task<TableData<ProjectDto>> LoadServerData(TableState state, CancellationToken cancellationToken)
-    {
-        _isLoading = true;
 
-        var response = await ProjectService.GetProjectsAsync(
-            state.Page + 1,
-            state.PageSize,
-            _searchString
-        );
-
-        var items = response.Data?.Items ?? new List<ProjectDto>();
-        var total = response.Data?.TotalCount ?? 0;
-
-        _hasData = items.Any();
-        _isLoading = false;
-
-        return new TableData<ProjectDto>
-        {
-            Items = items,
-            TotalItems = total
-        };
-    }
-
-    // ==================== SEARCH ====================
-    private async Task OnSearchChanged(string value)
-    {
-        _searchString = value;
-        await ReloadTable();
-    }
+private string _searchString = string.Empty;
+    private bool _isTableLoading = false;
+    private bool _hasData = true;
 
     private MudTable<ProjectDto>? _table;
 
-    private async Task ReloadTable()
+    // ==================== TABLE ====================
+
+    private async Task<TableData<ProjectDto>> LoadServerData(TableState state, CancellationToken token)
     {
+        TableData<ProjectDto>? tableData = null;
+
+        await ExecuteWithLoadingAsync(async () =>
+        {
+            var response = await ProjectService.GetProjectsAsync(
+                state.Page + 1,
+                state.PageSize,
+                _searchString
+            );
+
+            if (!response.Success)
+            {
+                Snackbar.Add(response.Message ?? "Failed to load projects", Severity.Error);
+            }
+
+            var items = response.Data?.Items ?? new List<ProjectDto>();
+            var total = response.Data?.TotalCount ?? 0;
+
+            _hasData = items.Any();
+
+            tableData = new TableData<ProjectDto>
+            {
+                Items = items,
+                TotalItems = total
+            };
+
+        }, loading => _isTableLoading = loading, "Error loading projects");
+
+        return tableData ?? new TableData<ProjectDto>();
+    }
+
+    // ==================== SEARCH ====================
+
+    private async Task OnSearchChanged(string value)
+    {
+        _searchString = value;
+
         if (_table != null)
             await _table.ReloadServerData();
     }
 
     // ==================== CREATE ====================
+
     private async Task OpenCreateProjectDialog()
     {
         var parameters = new DialogParameters
         {
-            // pass the callback using the parameter name expected by the dialog
             ["OnCreate"] = EventCallback.Factory.Create<CreateProjectDto>(this, OnProjectCreated)
         };
 
@@ -162,8 +175,7 @@
             Position = DialogPosition.Center
         };
 
-        // use Show (returns IDialogReference) then await its Result
-        var dialog = await DialogService.ShowAsync<ProjectDialog>("Create New Project", parameters, options);
+        var dialog = await DialogService.ShowAsync<ProjectDialog>("Create Project", parameters, options);
         var result = await dialog.Result;
 
         if (result != null && !result.Canceled)
@@ -172,31 +184,29 @@
 
     private async Task OnProjectCreated(CreateProjectDto dto)
     {
-        var result = await ProjectService.CreateProjectAsync(dto);
-
-        if (result.Success)
+        await ExecuteSafeNoLoadingAsync(async () =>
         {
-            Snackbar.Add("Project created successfully!", Severity.Success);
-            await ReloadTable();
-        }
-        else
-        {
-            Snackbar.Add(result.Message ?? "Failed to create project", Severity.Error);
-        }
-    }
+            var result = await ProjectService.CreateProjectAsync(dto);
 
-    // ==================== NAVIGATION ====================
-    private void OpenProjectDetail(Guid projectId)
-    {
-        Nav.NavigateTo($"/projects/{projectId}");
+            if (result.Success)
+            {
+                Snackbar.Add("Project created successfully!", Severity.Success);
+                await ReloadTable();
+            }
+            else
+            {
+                Snackbar.Add(result.Message ?? "Failed to create project", Severity.Error);
+            }
+
+        }, "Error creating project");
     }
 
     // ==================== EDIT ====================
+
     private async Task OpenEditProjectDialog(ProjectDto project)
     {
         var parameters = new DialogParameters
         {
-            // pass the project and the update callback explicitly
             ["Project"] = project,
             ["OnUpdate"] = EventCallback.Factory.Create<(Guid, UpdateProjectDto)>(this, OnProjectUpdated)
         };
@@ -218,28 +228,37 @@
 
     private async Task OnProjectUpdated((Guid Id, UpdateProjectDto Dto) data)
     {
-        var result = await ProjectService.UpdateProjectAsync(data.Id, data.Dto);
+        await ExecuteSafeNoLoadingAsync(async () =>
+        {
+            var result = await ProjectService.UpdateProjectAsync(data.Id, data.Dto);
 
-        if (result.Success)
-        {
-            Snackbar.Add("Project updated successfully!", Severity.Success);
-        }
-        else
-        {
-            Snackbar.Add(result.Message ?? "Failed to update project", Severity.Error);
-        }
+            if (result.Success)
+            {
+                Snackbar.Add("Project updated successfully!", Severity.Success);
+                await ReloadTable();
+            }
+            else
+            {
+                Snackbar.Add(result.Message ?? "Failed to update project", Severity.Error);
+            }
+
+        }, "Error updating project");
     }
 
     // ==================== DELETE ====================
+
     private async Task DeleteProject(ProjectDto project)
     {
-        bool? confirmed = await DialogService.ShowMessageBoxAsync(
+        var confirmed = await DialogService.ShowMessageBoxAsync(
             "Delete Project",
-            $"Are you sure you want to delete **{project.Name}**? This cannot be undone.",
+            $"Are you sure you want to delete **{project.Name}**?",
             yesText: "Delete",
             cancelText: "Cancel");
 
-        if (confirmed == true)
+        if (confirmed != true)
+            return;
+
+        await ExecuteSafeNoLoadingAsync(async () =>
         {
             var result = await ProjectService.DeleteProjectAsync(project.Id);
 
@@ -248,6 +267,26 @@
                 Snackbar.Add("Project deleted successfully", Severity.Success);
                 await ReloadTable();
             }
-        }
+            else
+            {
+                Snackbar.Add(result.Message ?? "Failed to delete project", Severity.Error);
+            }
+
+        }, "Error deleting project");
+    }
+
+    // ==================== NAVIGATION ====================
+
+    private void OpenProjectDetail(Guid projectId)
+    {
+        Nav.NavigateTo($"/projects/{projectId}");
+    }
+
+    // ==================== UTIL ====================
+
+    private async Task ReloadTable()
+    {
+        if (_table != null)
+            await _table.ReloadServerData();
     }
 }

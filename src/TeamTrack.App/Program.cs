@@ -11,6 +11,7 @@ using TeamTrack.App.Services.Dashboard;
 using TeamTrack.App.Services.Organization;
 using TeamTrack.App.Services.Project;
 using TeamTrack.App.Services.Role;
+using TeamTrack.App.Services.Task;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 
@@ -58,5 +59,6 @@ builder.Services.AddScoped<IOrganizationService, OrganizationService>();
 builder.Services.AddScoped<IRoleService, RoleService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<IProjectService, ProjectService>();
+builder.Services.AddScoped<ITaskService, TaskService>();
 
 await builder.Build().RunAsync();

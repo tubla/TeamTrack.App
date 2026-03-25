@@ -1,10 +1,10 @@
 ﻿@page "/select-organization"
 @layout AuthLayout
+@inherits BasePageComponent
 
-@inject NavigationManager Nav
 @inject IAuthService AuthService
-@inject ISnackbar Snackbar
 @inject ILocalStorageService Storage
+
 
 <div class="org-container">
 
@@ -32,7 +32,7 @@
                 Select Organization
             </MudText>
 
-            @if (_loading)
+            @if (IsLoading)
             {
                 <div class="d-flex justify-center my-5">
                     <MudProgressCircular Indeterminate="true" Size="Size.Large" />
@@ -166,54 +166,61 @@
 </style>
 
 @code {
-    private bool _loading = true;
     private List<OrganizationDto>? _organizations;
 
     protected override async Task OnInitializedAsync()
     {
-        var loginResponse = await Storage.GetItemAsync<LoginResponseDto>("loginResponse");
-
-        if (loginResponse == null || loginResponse.Organizations == null)
+        await ExecuteSafeAsync(async () =>
         {
-            Snackbar.Add("No organization info found. Please login again.", Severity.Error);
-            Nav.NavigateTo("/login");
-            return;
-        }
+            var loginResponse = await Storage.GetItemAsync<LoginResponseDto>("loginResponse");
 
-        _organizations = loginResponse.Organizations;
-        _loading = false;
 
-        // Single org → auto-select
-        if (_organizations.Count == 1)
-        {
-            await SelectOrganizationAsync(_organizations[0].Id);
-            return;
-        }
+            if (loginResponse == null)
+            {
+                Snackbar.Add("Session expired. Please login again.", Severity.Error);
+                Nav.NavigateTo("/login", true);
+                return;
+            }
+
+            if (loginResponse.Organizations == null || !loginResponse.Organizations.Any())
+            {
+                Snackbar.Add("No organization found.", Severity.Warning);
+                return;
+            }
+
+            _organizations = loginResponse.Organizations;
+
+            if (_organizations.Count == 1)
+            {
+                await SelectOrganizationAsync(_organizations[0].Id);
+            }
+        }, "Failed to initialize dashboard");
     }
 
     private async Task SelectOrganizationAsync(Guid orgId)
     {
-        _loading = true;
-
-        var dto = new SwitchOrganizationDto { OrganizationId = orgId };
-        var response = await AuthService.SwitchOrganizationAsync(dto);
-
-        _loading = false;
-
-        if (!response.Success)
+        await ExecuteSafeAsync(async () =>
         {
-            Snackbar.Add(response.Message ?? "Failed to switch organization.", Severity.Error);
-            return;
-        }
+            var dto = new SwitchOrganizationDto
+                {
+                    OrganizationId = orgId
+                };
 
-        // Store the orgId
-        await Storage.SetItemAsync("organizationId", orgId);
+            var response = await AuthService.SwitchOrganizationAsync(dto);
 
-        // Save updated tokens
-        await Storage.SetItemAsync("loginResponse", response.Data);
+            if (response == null || !response.Success || response.Data == null)
+            {
+                Snackbar.Add(response?.Message ?? "Failed to switch organization.", Severity.Error);
+                return;
+            }
 
-        Snackbar.Add("Organization selected!", Severity.Success);
+            await Storage.SetItemAsync("organizationId", orgId);
+            await Storage.SetItemAsync("loginResponse", response.Data);
 
-        Nav.NavigateTo("/dashboard", true);
+            Snackbar.Add("Organization selected!", Severity.Success);
+
+            Nav.NavigateTo("/dashboard", true);
+
+        }, "Error switching organization");
     }
 }

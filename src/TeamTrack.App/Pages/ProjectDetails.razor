@@ -1,0 +1,233 @@
+﻿@page "/projects/{ProjectId:guid}"
+@using TeamTrack.App.Services.Task
+@inherits BasePageComponent
+
+@inject IProjectService ProjectService
+@inject ITaskService TaskService
+@inject IDialogService DialogService
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-6">
+
+    
+    @if (IsLoading)
+    {
+        <MudProgressLinear Indeterminate="true" />
+    }
+    else if (_project == null)
+    {
+        <MudText Color="Color.Error">Project not found</MudText>
+    }
+    else
+    {
+        <!-- HEADER -->
+        <MudPaper Class="pa-6 mb-6">
+
+            <MudText Typo="Typo.h4" Class="font-weight-bold">
+                @_project.Name
+            </MudText>
+
+            <MudText Class="mt-2" Color="Color.Secondary">
+                @_project.Description
+            </MudText>
+
+            <MudDivider Class="my-4" />
+
+            <div class="d-flex justify-space-between align-center">
+
+                <MudText>
+                    Tasks: @_project.CompletedTasks / @_project.TotalTasks
+                </MudText>
+
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Add"
+                           OnClick="OpenCreateTaskDialog">
+                    New Task
+                </MudButton>
+
+            </div>
+
+        </MudPaper>
+
+        <!-- TASK TABLE -->
+        <MudTable T="TaskDto"
+                  ServerData="@( (state, token) => LoadTasks(state, token) )"
+                  Hover="true"
+                  Dense="true"
+                  Loading="_isLoadingTasks">
+
+            <HeaderContent>
+                <MudTh>Title</MudTh>
+                <MudTh>Status</MudTh>
+                <MudTh>Assigned To</MudTh>
+                <MudTh>Due Date</MudTh>
+                <MudTh>Actions</MudTh>
+            </HeaderContent>
+
+            <RowTemplate Context="task">
+
+                <MudTd>@task.Title</MudTd>
+
+                <MudTd>
+                    <MudChip T="string" Color="Color.Primary">
+                        @task.Status
+                    </MudChip>
+                </MudTd>
+
+                <MudTd>@task.AssignedUserName</MudTd>
+
+                <MudTd>
+                    @(task.DueDate?.ToString("dd MMM yyyy") ?? "-")
+                </MudTd>
+
+                <MudTd>
+                    <MudIconButton Icon="@Icons.Material.Filled.CheckCircle"
+                                   Color="Color.Success"
+                                   Size="Size.Small"
+                                   OnClick="() => MarkComplete(task.Id)" />
+                </MudTd>
+
+            </RowTemplate>
+
+            <PagerContent>
+                <MudTablePager />
+            </PagerContent>
+
+        </MudTable>
+    }
+    
+
+</MudContainer>
+
+@code {
+
+
+    [Parameter] public Guid ProjectId { get; set; }
+
+    private ProjectDto? _project;
+    private bool _isLoadingTasks = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ExecuteSafeAsync(async () =>
+        {
+            var response = await ProjectService.GetProjectAsync(ProjectId);
+
+            if (response == null || !response.Success || response.Data == null)
+            {
+                Snackbar.Add(response?.Message ?? "Failed to load project", Severity.Error);
+                return;
+            }
+
+            _project = response.Data;
+
+        }, "Error loading project");
+    }
+
+    // ================= TASKS =================
+
+    private async Task<TableData<TaskDto>> LoadTasks(TableState state, CancellationToken token)
+    {
+        TableData<TaskDto>? tableData = null;
+
+        await ExecuteWithLoadingAsync(async () =>
+        {
+            var response = await TaskService.GetTasksAsync(
+                ProjectId,
+                state.Page + 1,
+                state.PageSize
+            );
+
+            if (!response.Success)
+            {
+                Snackbar.Add(response.Message ?? "Failed to load tasks", Severity.Error);
+            }
+
+            tableData = new TableData<TaskDto>
+            {
+                Items = response.Data?.Items ?? new List<TaskDto>(),
+                TotalItems = response.Data?.TotalCount ?? 0
+            };
+
+        }, loading => _isLoadingTasks = loading, "Error loading tasks");
+
+        return tableData ?? new TableData<TaskDto>();
+    }
+
+    // ================= ACTIONS =================
+
+    private async Task MarkComplete(Guid taskId)
+    {
+        await ExecuteSafeNoLoadingAsync(async () =>
+        {
+            var result = await TaskService.UpdateTaskStatusAsync(taskId, "Completed");
+
+            if (result.Success)
+            {
+                Snackbar.Add("Task updated", Severity.Success);
+
+                // Refresh table after update
+                await ReloadTasks();
+            }
+            else
+            {
+                Snackbar.Add(result.Message ?? "Failed to update task", Severity.Error);
+            }
+
+        }, "Error updating task");
+    }
+
+    private MudTable<TaskDto>? _taskTable;
+
+    private async Task ReloadTasks()
+    {
+        if (_taskTable != null)
+            await _taskTable.ReloadServerData();
+    }
+
+    private async Task OpenCreateTaskDialog()
+    {
+        var parameters = new DialogParameters
+{
+{ "ProjectId", ProjectId },
+{ "OnCreate", EventCallback.Factory.Create<CreateTaskDto>(this, OnTaskCreated) }
+};
+
+
+        var options = new DialogOptions
+            {
+                MaxWidth = MaxWidth.Medium,
+                FullWidth = true
+            };
+
+        var dialog = await DialogService.ShowAsync<TaskDialog>("Create Task", parameters, options);
+
+        var result = await dialog.Result;
+
+        if (result != null && !result.Canceled)
+            await ReloadTasks();
+
+
+    }
+
+    private async Task OnTaskCreated(CreateTaskDto dto)
+    {
+        await ExecuteSafeNoLoadingAsync(async () =>
+        {
+            var result = await TaskService.CreateTaskAsync(dto);
+
+
+            if (result.Success)
+            {
+                Snackbar.Add("Task created successfully!", Severity.Success);
+                await ReloadTasks();
+            }
+            else
+            {
+                Snackbar.Add(result.Message ?? "Failed to create task", Severity.Error);
+            }
+
+        }, "Error creating task");
+
+    }
+}

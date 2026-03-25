@@ -1,0 +1,160 @@
+﻿@using TaskStatus = TeamTrack.App.Models.Task.TaskStatus
+@using TaskPriority = TeamTrack.App.Models.Task.TaskPriority
+
+@inject ISnackbar Snackbar
+
+<MudDialogContent Class="pa-6">
+
+
+<MudForm @ref="_form">
+
+    <MudGrid Spacing="2">
+
+        <!-- Title -->
+        <MudItem xs="12">
+            <MudTextField T="string"
+                          Label="Title"
+                          @bind-Value="_model.Title"
+                          Required="true"
+                          RequiredError="Title is required"
+                          Variant="Variant.Outlined" />
+        </MudItem>
+
+        <!-- Description -->
+        <MudItem xs="12">
+            <MudTextField T="string"
+                          Label="Description"
+                          @bind-Value="_model.Description"
+                          Lines="3"
+                          Variant="Variant.Outlined" />
+        </MudItem>
+
+        <!-- Status -->
+        <MudItem xs="12" sm="6">
+                <MudSelect T="TaskStatus"
+                           Label="Status"
+                           @bind-Value="_model.Status"
+                           Variant="Variant.Outlined"
+                           Immediate="true">
+
+                    @foreach (var status in Enum.GetValues<TaskStatus>())
+                    {
+                        <MudSelectItem Value="@status">@status.ToString()</MudSelectItem>
+                    }
+
+                </MudSelect>
+        </MudItem>
+
+        <!-- Priority -->
+        <MudItem xs="12" sm="6">
+            <MudSelect T="TaskPriority"
+                       Label="Priority"
+                       @bind-Value="_model.Priority"
+                       Variant="Variant.Outlined"
+                       Immediate="true">
+                    @foreach (var priority in Enum.GetValues<TaskPriority>())
+                    {
+                        <MudSelectItem Value="@priority">@priority.ToString()</MudSelectItem>
+                    }
+            </MudSelect>
+        </MudItem>
+
+        <!-- Assign User -->
+        <MudItem xs="12">
+            <MudSelect T="Guid?"
+                       Label="Assign To"
+                       @bind-Value="_model.AssignedUserId"
+                       Variant="Variant.Outlined"
+                       Clearable="true"
+                       Immediate="true">
+
+                @foreach (var user in _users)
+                {
+                    <MudSelectItem Value="@user.Id">@user.Name</MudSelectItem>
+                }
+
+            </MudSelect>
+        </MudItem>
+
+        <!-- Due Date -->
+        <MudItem xs="12">
+                <MudDatePicker Label="Due Date"
+                               @bind-Date="_model.DueDate"
+                               Variant="Variant.Outlined"
+                               MinDate="@DateTime.Today.AddDays(1)" />
+        </MudItem>
+
+    </MudGrid>
+
+</MudForm>
+
+
+</MudDialogContent>
+
+<MudDialogActions Class="px-6 pb-4 pt-2">
+
+
+<MudButton OnClick="Cancel">Cancel</MudButton>
+
+<MudButton Color="Color.Primary"
+           Variant="Variant.Filled"
+           OnClick="Submit">
+    Create
+</MudButton>
+
+
+</MudDialogActions>
+
+@code {
+
+
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public Guid ProjectId { get; set; }
+    [Parameter] public EventCallback<CreateTaskDto> OnCreate { get; set; }
+
+    private MudForm? _form;
+
+    private CreateTaskDto _model = new();
+
+    private List<UserDto> _users = new();
+
+    protected override void OnInitialized()
+    {
+        _model.ProjectId = ProjectId;
+
+        // TEMP dummy users (replace with API later)
+        _users = new List<UserDto>
+        {
+            new() { Id = Guid.NewGuid(), Name = "John Doe" },
+            new() { Id = Guid.NewGuid(), Name = "Jane Smith" }
+        };
+    }
+
+    private async Task Submit()
+    {
+        if (_form == null) return;
+
+        await _form.ValidateAsync();
+
+        if (!_form.IsValid) return;
+
+        if (_model.DueDate.HasValue && _model.DueDate.Value.Date <= DateTime.Today)
+        {
+            Snackbar.Add("Due date must be in the future", Severity.Warning);
+            return;
+        }
+
+        await OnCreate.InvokeAsync(_model);
+
+        MudDialog.Close(DialogResult.Ok(true));
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private class UserDto
+    {
+        public Guid Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+    }
+}

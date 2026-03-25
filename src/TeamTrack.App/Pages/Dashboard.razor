@@ -1,244 +1,268 @@
 ﻿@page "/dashboard"
 @layout ApplicationLayout
+@inherits BasePageComponent
 
-@if (_isLoading)
-{
-    <MudContainer MaxWidth="MaxWidth.Large" Class="mt-6 px-4 px-md-8">
-        <MudSkeleton Type="SkeletonType.Text" Width="300px" Height="40px" Class="mb-6" />
-        <MudGrid Spacing="3">
-            @for (int i = 0; i < 6; i++)
-            {
-                <MudItem xs="12" sm="6" md="4" lg="3">
-                    <MudSkeleton Type="SkeletonType.Rectangle" Height="138px" Class="rounded-xl" />
-                </MudItem>
-            }
-        </MudGrid>
+@if (IsLoading)
+{ <MudContainer MaxWidth="MaxWidth.Large" Class="mt-6 px-4 px-md-8"> <MudSkeleton Type="SkeletonType.Text" Width="300px" Height="40px" Class="mb-6" /> <MudGrid Spacing="3">
+@for (int i = 0; i < 6; i++)
+{ <MudItem xs="12" sm="6" md="4" lg="3"> <MudSkeleton Type="SkeletonType.Rectangle" Height="138px" Class="rounded-xl" /> </MudItem>
+} </MudGrid>
 
-        <MudGrid Spacing="3" Class="mt-8">
-            <MudItem xs="12" md="4">
-                <MudSkeleton Type="SkeletonType.Rectangle" Height="280px" Class="rounded-xl" />
-            </MudItem>
-            <MudItem xs="12" md="8">
-                <MudSkeleton Type="SkeletonType.Rectangle" Height="280px" Class="rounded-xl" />
-            </MudItem>
-        </MudGrid>
-    </MudContainer>
+
+    <MudGrid Spacing="3" Class="mt-8">
+        <MudItem xs="12" md="4">
+            <MudSkeleton Height="280px" Class="rounded-xl" />
+        </MudItem>
+        <MudItem xs="12" md="8">
+            <MudSkeleton Height="280px" Class="rounded-xl" />
+        </MudItem>
+    </MudGrid>
+</MudContainer>
+
+
 }
 else
-{
-    <MudContainer MaxWidth="MaxWidth.Large" Class="mt-6 px-4 px-md-8">
+{ <MudContainer MaxWidth="MaxWidth.Large" Class="mt-6 px-4 px-md-8">
 
-        <!-- Welcome -->
-        <MudText Typo="Typo.h4" GutterBottom="true" Class="mb-1 font-weight-bold">
-            Welcome back, @_userFirstName!
-        </MudText>
-        <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mb-8">
-            Here's what's happening across your organizations
-        </MudText>
 
-        <!-- Stats Cards -->
-        <MudGrid Spacing="3">
-            <MudItem xs="12" sm="6" md="4" lg="3">
-                <StatCard Icon="@Icons.Material.Filled.Folder" Title="Total Projects" 
-                          Value="@_stats.TotalProjects" Color="Color.Primary" />
-            </MudItem>
-            <MudItem xs="12" sm="6" md="4" lg="3">
-                <StatCard Icon="@Icons.Material.Filled.Assignment" Title="Total Tasks" 
-                          Value="@_stats.TotalTasks" Color="Color.Info" />
-            </MudItem>
-            <MudItem xs="12" sm="6" md="4" lg="3">
-                <StatCard Icon="@Icons.Material.Filled.CheckCircle" Title="Completed" 
-                          Value="@_stats.CompletedTasks" Color="Color.Success" />
-            </MudItem>
-            <MudItem xs="12" sm="6" md="4" lg="3">
-                <StatCard Icon="@Icons.Material.Filled.WarningAmber" Title="Overdue" 
-                          Value="@_stats.OverdueTasks" Color="Color.Error" />
-            </MudItem>
-            <MudItem xs="12" sm="6" md="4" lg="3">
-                <StatCard Icon="@Icons.Material.Filled.People" Title="Team Members" 
-                          Value="@_stats.TeamMembers" Color="Color.Secondary" />
-            </MudItem>
-            <MudItem xs="12" sm="6" md="4" lg="3">
-                <StatCard Icon="@Icons.Material.Filled.Notifications" Title="Unread" 
-                          Value="@_stats.UnreadNotifications" Color="Color.Warning" />
-            </MudItem>
-        </MudGrid>
+    <!-- Welcome -->
+    <MudText Typo="Typo.h4" Class="mb-1 font-weight-bold">
+        Welcome back, @_userFirstName!
+    </MudText>
 
-        <MudGrid Spacing="3" Class="mt-8">
-            <!-- Quick Actions -->
-            <MudItem xs="12" md="4">
-                <MudPaper Elevation="2" Class="pa-6 rounded-xl h-100">
-                    <MudText Typo="Typo.h6" Class="mb-5">Quick Actions</MudText>
-                    <MudStack Spacing="3">
-                        <MudButton FullWidth Variant="Variant.Outlined" Color="Color.Primary" 
-                                   StartIcon="@Icons.Material.Filled.AddTask"
-                                   OnClick='() => Nav.NavigateTo("/tasks/create")'>
-                            New Task
-                        </MudButton>
-                        <MudButton FullWidth Variant="Variant.Outlined" Color="Color.Primary" 
-                                   StartIcon="@Icons.Material.Filled.Folder"
-                                   OnClick='() => Nav.NavigateTo("/projects/create")'>
-                            New Project
-                        </MudButton>
-                        <MudButton FullWidth Variant="Variant.Outlined" Color="Color.Primary" 
-                                   StartIcon="@Icons.Material.Filled.GroupAdd"
-                                   OnClick='() => Nav.NavigateTo("/admin/invite")'
-                                   Disabled="@(!_isAdmin)">
-                            Invite Member
-                        </MudButton>
-                    </MudStack>
-                </MudPaper>
-            </MudItem>
+    <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mb-8">
+        Here's what's happening across your organizations
+    </MudText>
 
-            <!-- Recent Tasks - Clickable -->
-            <MudItem xs="12" md="8">
-                <MudPaper Elevation="2" Class="pa-6 rounded-xl">
-                    <div class="d-flex justify-space-between align-center mb-4">
-                        <MudText Typo="Typo.h6">Recent Tasks</MudText>
-                        <MudButton Variant="Variant.Text" Color="Color.Primary" 
-                                   Href="/tasks" EndIcon="@Icons.Material.Filled.ArrowForward">
-                            View All
-                        </MudButton>
-                    </div>
+    <!-- Stats -->
+    <MudGrid Spacing="3">
+        <MudItem xs="12" sm="6" md="4" lg="3">
+            <StatCard Icon="@Icons.Material.Filled.Folder" Title="Total Projects" Value="@_stats?.TotalProjects" Color="Color.Primary" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="4" lg="3">
+            <StatCard Icon="@Icons.Material.Filled.Assignment" Title="Total Tasks" Value="@_stats?.TotalTasks" Color="Color.Info" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="4" lg="3">
+            <StatCard Icon="@Icons.Material.Filled.CheckCircle" Title="Completed" Value="@_stats?.CompletedTasks" Color="Color.Success" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="4" lg="3">
+            <StatCard Icon="@Icons.Material.Filled.WarningAmber" Title="Overdue" Value="@_stats?.OverdueTasks" Color="Color.Error" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="4" lg="3">
+            <StatCard Icon="@Icons.Material.Filled.People" Title="Team Members" Value="@_stats?.TeamMembers" Color="Color.Secondary" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="4" lg="3">
+            <StatCard Icon="@Icons.Material.Filled.Notifications" Title="Unread" Value="@_stats?.UnreadNotifications" Color="Color.Warning" />
+        </MudItem>
+    </MudGrid>
 
-                    @if (_recentTasks?.Any() == true)
-                    {
-                        <MudTable Items="_recentTasks" Dense="true" Hover="true" Bordered="false">
-                            <HeaderContent>
-                                <MudTh>Title</MudTh>
-                                <MudTh>Project</MudTh>
-                                <MudTh>Priority</MudTh>
-                                <MudTh>Due Date</MudTh>
-                                <MudTh>Status</MudTh>
-                            </HeaderContent>
-                            <RowTemplate>
-                                <MudTd DataLabel="Title" Style="cursor:pointer;" @onclick="() => OpenTaskDetail(context.Id)">
-                                    <strong>@context.Title</strong>
-                                </MudTd>
-                                <MudTd DataLabel="Project">@(context.ProjectName ?? "—")</MudTd>
-                                <MudTd DataLabel="Priority">
-                                    <MudChip T="string" Size="Size.Small" Color="@GetPriorityColor(context.Priority)" Variant="Variant.Filled">
-                                        @context.Priority
-                                    </MudChip>
-                                </MudTd>
-                                <MudTd DataLabel="Due Date">
-                                    @if (context.DueDate.HasValue)
-                                    {
-                                        bool isOverdue = context.DueDate < DateTimeOffset.UtcNow && context.Status != "Done";
-                                        <span class="@(isOverdue ? "text-error font-weight-medium" : "")">
-                                            @context.DueDate.Value.ToString("dd MMM yyyy")
-                                        </span>
-                                    }
-                                    else { <span>—</span> }
-                                </MudTd>
-                                <MudTd DataLabel="Status">
-                                    <MudChip T="string" Size="Size.Small" Color="@GetStatusColor(context.Status)" Variant="Variant.Filled">
-                                        @context.Status
-                                    </MudChip>
-                                </MudTd>
-                            </RowTemplate>
-                        </MudTable>
-                    }
-                    else
-                    {
-                        <MudText Align="Align.Center" Color="Color.Secondary" Class="py-10">
-                            No recent tasks found
-                        </MudText>
-                    }
-                </MudPaper>
-            </MudItem>
+    <MudGrid Spacing="3" Class="mt-8">
 
-            <!-- Project Progress -->
-            <MudItem xs="12" Class="mt-4">
-                <MudPaper Elevation="2" Class="pa-6 rounded-xl">
-                    <MudText Typo="Typo.h6" Class="mb-5">Project Progress</MudText>
-                    
-                    @if (_projectProgress?.Any() == true)
-                    {
-                        <MudGrid Spacing="4">
-                            @foreach (var proj in _projectProgress)
-                            {
-                                <MudItem xs="12" sm="6" md="4">
-                                    <MudCard Elevation="1">
-                                        <MudCardContent>
-                                            <MudText Typo="Typo.subtitle1">@proj.Name</MudText>
-                                            <MudProgressLinear Color="Color.Success" 
-                                                               Value="@proj.ProgressPercent" 
-                                                               Size="Size.Medium" Class="my-3" />
-                                            <div class="d-flex justify-space-between">
-                                                <MudText Typo="Typo.body2">@proj.CompletedTasks / @proj.TotalTasks tasks</MudText>
-                                                <MudText Typo="Typo.body2" Color="Color.Success">@proj.ProgressPercent%</MudText>
-                                            </div>
-                                        </MudCardContent>
-                                    </MudCard>
-                                </MudItem>
-                            }
-                        </MudGrid>
-                    }
-                    else
-                    {
-                        <MudText Color="Color.Secondary">No projects found</MudText>
-                    }
-                </MudPaper>
-            </MudItem>
-        </MudGrid>
-    </MudContainer>
+        <!-- Quick Actions -->
+        <MudItem xs="12" md="4">
+            <MudPaper Elevation="2" Class="pa-6 rounded-xl h-100">
+                <MudText Typo="Typo.h6" Class="mb-5">Quick Actions</MudText>
+
+                <MudStack Spacing="3">
+                    <MudButton FullWidth Variant="Variant.Outlined" Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.AddTask"
+                               OnClick='() => Nav.NavigateTo("/tasks/create")'>
+                        New Task
+                    </MudButton>
+
+                    <MudButton FullWidth Variant="Variant.Outlined" Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Folder"
+                               OnClick='() => Nav.NavigateTo("/projects")'>
+                        New Project
+                    </MudButton>
+
+                    <MudButton FullWidth Variant="Variant.Outlined" Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.GroupAdd"
+                               OnClick='() => Nav.NavigateTo("/admin/invite")'
+                               Disabled="@(!_isAdmin)">
+                        Invite Member
+                    </MudButton>
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+
+        <!-- Recent Tasks -->
+        <MudItem xs="12" md="8">
+            <MudPaper Elevation="2" Class="pa-6 rounded-xl">
+
+                <div class="d-flex justify-space-between align-center mb-4">
+                    <MudText Typo="Typo.h6">Recent Tasks</MudText>
+                    <MudButton Variant="Variant.Text" Color="Color.Primary" Href="/tasks">
+                        View All
+                    </MudButton>
+                </div>
+
+                @if (_recentTasks?.Any() == true)
+                {
+                    <MudTable Items="_recentTasks" Dense Hover>
+
+                        <HeaderContent>
+                            <MudTh>Title</MudTh>
+                            <MudTh>Project</MudTh>
+                            <MudTh>Priority</MudTh>
+                            <MudTh>Due Date</MudTh>
+                            <MudTh>Status</MudTh>
+                        </HeaderContent>
+
+                        <RowTemplate Context="task">
+                            <MudTd Style="cursor:pointer;" @onclick="() => OpenTaskDetail(task.Id)">
+                                <strong>@task.Title</strong>
+                            </MudTd>
+
+                            <MudTd>@(task.ProjectName ?? "—")</MudTd>
+
+                            <MudTd>
+                                <MudChip T="string" Size="Size.Small" Color="@GetPriorityColor(task.Priority)">
+                                    @task.Priority
+                                </MudChip>
+                            </MudTd>
+
+                            <MudTd>
+                                @if (task.DueDate.HasValue)
+                                {
+                                    bool overdue = task.DueDate < DateTimeOffset.UtcNow && task.Status != "Done";
+                                    <span class="@(overdue ? "text-error font-weight-medium" : "")">
+                                        @task.DueDate.Value.ToString("dd MMM yyyy")
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span>—</span>
+                                }
+                            </MudTd>
+
+                            <MudTd>
+                                <MudChip T="string" Size="Size.Small" Color="@GetStatusColor(task.Status)">
+                                    @task.Status
+                                </MudChip>
+                            </MudTd>
+                        </RowTemplate>
+
+                    </MudTable>
+                }
+                else
+                {
+                    <MudText Align="Align.Center" Color="Color.Secondary" Class="py-10">
+                        No recent tasks found
+                    </MudText>
+                }
+
+            </MudPaper>
+        </MudItem>
+
+        <!-- Project Progress -->
+        <MudItem xs="12" Class="mt-4">
+            <MudPaper Elevation="2" Class="pa-6 rounded-xl">
+
+                <MudText Typo="Typo.h6" Class="mb-5">Project Progress</MudText>
+
+                @if (_projectProgress?.Any() == true)
+                {
+                    <MudGrid Spacing="4">
+                        @foreach (var proj in _projectProgress)
+                        {
+                            <MudItem xs="12" sm="6" md="4">
+                                <MudCard Elevation="1">
+                                    <MudCardContent>
+                                        <MudText Typo="Typo.subtitle1">@proj.Name</MudText>
+
+                                        <MudProgressLinear Color="Color.Success"
+                                                           Value="@proj.ProgressPercent"
+                                                           Class="my-3" />
+
+                                        <div class="d-flex justify-space-between">
+                                            <MudText Typo="Typo.body2">
+                                                @proj.CompletedTasks / @proj.TotalTasks tasks
+                                            </MudText>
+                                            <MudText Typo="Typo.body2" Color="Color.Success">
+                                                @proj.ProgressPercent%
+                                            </MudText>
+                                        </div>
+                                    </MudCardContent>
+                                </MudCard>
+                            </MudItem>
+                        }
+                    </MudGrid>
+                }
+                else
+                {
+                    <MudText Color="Color.Secondary">No projects found</MudText>
+                }
+
+            </MudPaper>
+        </MudItem>
+
+    </MudGrid>
+</MudContainer>
+
+
 }
 
 @code {
-    private bool _isLoading = true;
-    private DashboardStats? _stats;
-    private List<RecentTaskItem>? _recentTasks;
-    private List<ProjectProgressItem>? _projectProgress;
-    private string? _userFirstName;
-    private bool _isAdmin;
 
-    [Inject] private IDashboardService DashboardService { get; set; } = default!;
-    [Inject] private ILocalStorageService Storage { get; set; } = default!;
-    [Inject] private ISnackbar Snackbar { get; set; } = default!;
-    [Inject] private NavigationManager Nav { get; set; } = default!;
 
-    protected override async Task OnInitializedAsync()
+private DashboardStats? _stats;
+private List<RecentTaskItem>? _recentTasks;
+private List<ProjectProgressItem>? _projectProgress;
+
+private string? _userFirstName;
+private bool _isAdmin;
+
+[Inject] private IDashboardService DashboardService { get; set; } = default!;
+[Inject] private ILocalStorageService Storage { get; set; } = default!;
+
+protected override async Task OnInitializedAsync()
+{
+    await ExecuteSafeAsync(async () =>
     {
         var login = await Storage.GetItemAsync<LoginResponseDto>("loginResponse");
+
         _userFirstName = login?.User?.FirstName ?? "User";
-        _isAdmin = login?.User?.Roles?.Any(r => r.Contains("Admin", StringComparison.OrdinalIgnoreCase)) == true;
+
+        _isAdmin = login?.User?.Roles?
+            .Any(r => r.Contains("Admin", StringComparison.OrdinalIgnoreCase)) == true;
 
         var response = await DashboardService.GetDashboardAsync();
 
-        if (response.Success && response.Data != null)
+        if (response == null || !response.Success || response.Data == null)
         {
-            _stats = response.Data.Stats;
-            _recentTasks = response.Data.RecentTasks;
-            _projectProgress = response.Data.ProjectProgress;
-        }
-        else
-        {
-            Snackbar.Add(response.Message ?? "Failed to load dashboard", Severity.Warning);
+            Snackbar.Add(response?.Message ?? "Failed to load dashboard", Severity.Warning);
+            return;
         }
 
-        _isLoading = false;
-    }
+        _stats = response.Data.Stats;
+        _recentTasks = response.Data.RecentTasks;
+        _projectProgress = response.Data.ProjectProgress;
 
-    private void OpenTaskDetail(Guid taskId)
-    {
-        Nav.NavigateTo($"/tasks/{taskId}");
-    }
+    }, "Error loading dashboard");
+}
 
-    private Color GetStatusColor(string? status) => status?.ToLowerInvariant() switch
-    {
-        "done" or "completed" => Color.Success,
-        "in progress" or "inprogress" => Color.Info,
-        "review" => Color.Warning,
-        "todo" or "to do" => Color.Default,
-        _ => Color.Secondary
-    };
+private void OpenTaskDetail(Guid taskId)
+{
+    Nav.NavigateTo($"/tasks/{taskId}");
+}
 
-    private Color GetPriorityColor(string? priority) => priority?.ToLowerInvariant() switch
-    {
-        "high" => Color.Error,
-        "medium" => Color.Warning,
-        "low" => Color.Info,
-        _ => Color.Default
-    };
+private Color GetStatusColor(string? status) => status?.ToLowerInvariant() switch
+{
+    "done" => Color.Success,
+    "in progress" => Color.Info,
+    "review" => Color.Warning,
+    "todo" => Color.Default,
+    _ => Color.Secondary
+};
+
+private Color GetPriorityColor(string? priority) => priority?.ToLowerInvariant() switch
+{
+    "high" => Color.Error,
+    "medium" => Color.Warning,
+    "low" => Color.Info,
+    _ => Color.Default
+};
+
+
 }
