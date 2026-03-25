@@ -98,16 +98,15 @@
             No projects found. Create your first project!
         </MudText>
     }
-    ```
 
 </MudContainer>
 
 @code {
     private string _searchString = string.Empty;
     private bool _isLoading = false;
-    private bool _hasData = true;
+    private bool _hasData = true;    
 
-// ==================== TABLE SERVER DATA ====================
+    // ==================== TABLE SERVER DATA ====================
     private async Task<TableData<ProjectDto>> LoadServerData(TableState state, CancellationToken cancellationToken)
     {
         _isLoading = true;
@@ -150,14 +149,21 @@
     private async Task OpenCreateProjectDialog()
     {
         var parameters = new DialogParameters
-    {
-        { nameof(CreateProjectDialog.OnCreate),
-          EventCallback.Factory.Create<CreateProjectDto>(this, OnProjectCreated) }
-    };
+        {
+            // pass the callback using the parameter name expected by the dialog
+            ["OnCreate"] = EventCallback.Factory.Create<CreateProjectDto>(this, OnProjectCreated)
+        };
 
-        var dialog = await DialogService.ShowAsync<CreateProjectDialog>(
-            "Create New Project", parameters);
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true,
+            CloseOnEscapeKey = true,
+            Position = DialogPosition.Center
+        };
 
+        // use Show (returns IDialogReference) then await its Result
+        var dialog = await DialogService.ShowAsync<ProjectDialog>("Create New Project", parameters, options);
         var result = await dialog.Result;
 
         if (result != null && !result.Canceled)
@@ -188,7 +194,40 @@
     // ==================== EDIT ====================
     private async Task OpenEditProjectDialog(ProjectDto project)
     {
-        Snackbar.Add("Edit project feature coming soon...", Severity.Info);
+        var parameters = new DialogParameters
+        {
+            // pass the project and the update callback explicitly
+            ["Project"] = project,
+            ["OnUpdate"] = EventCallback.Factory.Create<(Guid, UpdateProjectDto)>(this, OnProjectUpdated)
+        };
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true,
+            CloseOnEscapeKey = true,
+            Position = DialogPosition.Center
+        };
+
+        var dialog = await DialogService.ShowAsync<ProjectDialog>("Edit Project", parameters, options);
+        var result = await dialog.Result;
+
+        if (result != null && !result.Canceled)
+            await ReloadTable();
+    }
+
+    private async Task OnProjectUpdated((Guid Id, UpdateProjectDto Dto) data)
+    {
+        var result = await ProjectService.UpdateProjectAsync(data.Id, data.Dto);
+
+        if (result.Success)
+        {
+            Snackbar.Add("Project updated successfully!", Severity.Success);
+        }
+        else
+        {
+            Snackbar.Add(result.Message ?? "Failed to update project", Severity.Error);
+        }
     }
 
     // ==================== DELETE ====================

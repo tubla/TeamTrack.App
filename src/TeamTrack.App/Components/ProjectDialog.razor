@@ -1,0 +1,126 @@
+﻿@inject ISnackbar Snackbar
+
+<MudDialogContent  Class="px-6 pt-4 pb-2">
+    <MudPaper Elevation="0">
+
+<MudForm @ref="_form">
+
+    <MudGrid>
+
+        <MudItem xs="12">
+            <MudTextField T="string"
+                          Label="Project Name"
+                          @bind-Value="_model.Name"
+                          Required="true"
+                          RequiredError="Project name is required"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense" />
+        </MudItem>
+
+        <MudItem xs="12">
+            <MudTextField T="string"
+                          Label="Description"
+                          @bind-Value="_model.Description"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Lines="4" />
+        </MudItem>
+
+    </MudGrid>
+
+</MudForm>
+
+    </MudPaper>
+</MudDialogContent>
+
+<MudDialogActions Class="px-6 pb-4 pt-2">
+
+
+<MudButton Variant="Variant.Text"
+           OnClick="Cancel"
+           Disabled="_isSubmitting">
+    Cancel
+</MudButton>
+
+<MudButton Variant="Variant.Filled"
+           Color="Color.Primary"
+           OnClick="Submit"
+           Disabled="_isSubmitting">
+    @(_isEditMode ? "Update" : "Create")
+</MudButton>
+
+
+</MudDialogActions>
+
+@code {
+
+[CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+[Parameter] public ProjectDto? Project { get; set; }
+[Parameter] public EventCallback<CreateProjectDto> OnCreate { get; set; }
+[Parameter] public EventCallback<(Guid Id, UpdateProjectDto Dto)> OnUpdate { get; set; }
+
+private MudForm? _form;
+private bool _isSubmitting = false;
+
+private CreateProjectDto _model = new();
+
+private bool _isEditMode => Project != null;
+
+protected override void OnParametersSet()
+{
+if (Project != null)
+{
+_model = new CreateProjectDto
+{
+Name = Project.Name ?? string.Empty,
+Description = Project.Description
+};
+}
+}
+
+private async Task Submit()
+{
+if (_form == null) return;
+
+
+await _form.ValidateAsync();
+
+if (!_form.IsValid) return;
+
+_isSubmitting = true;
+
+try
+{
+    if (_isEditMode && Project != null)
+    {
+        var updateDto = new UpdateProjectDto
+        {
+            Name = _model.Name,
+            Description = _model.Description
+        };
+
+        await OnUpdate.InvokeAsync((Project.Id, updateDto));
+    }
+    else
+    {
+        await OnCreate.InvokeAsync(_model);
+    }
+
+    MudDialog.Close(DialogResult.Ok(true));
+}
+catch
+{
+    Snackbar.Add("Something went wrong", Severity.Error);
+}
+finally
+{
+    _isSubmitting = false;
+}
+
+
+}
+
+private void Cancel() => MudDialog.Cancel();
+
+}
